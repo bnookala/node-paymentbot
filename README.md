@@ -8,13 +8,15 @@ A sample bot that demonstrates an integration between Bot Framework and PayPal
 
 ## Setup
 
-1. Create a PayPal account, and then create an application: You can do that here: https://developer.paypal.com/developer/applications/create. 
+1. Download and install a Bot Framework emulator, as this bot can be run locally: https://docs.botframework.com/en-us/tools/bot-framework-emulator/
+
+2. Create a PayPal account, and then create an application. You can do that here: https://developer.paypal.com/developer/applications/create. 
 After creating the application, grab the **Client ID** and **Client Secret** from the application dashboard. These will be used to allow the bot to connect to PayPal.
 
-2. Create a PayPal sandbox test user here: https://developer.paypal.com/developer/accounts/. This is only needed if you use the PayPal "sandbox" environment to test payments. 
+3. Create a PayPal sandbox test user here: https://developer.paypal.com/developer/accounts/. This is only needed if you use the PayPal "sandbox" environment to test payments. 
 You can change the environment PayPal will create payments on by changing the `PAYPAL_CLIENT_MODE` environment variable to "live".
 
-3. Export the environment variables: PAYPAL_CLIENT_MODE, PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET.
+4. Export these environment variables: **PAYPAL_CLIENT_MODE**, **PAYPAL_CLIENT_ID**, **PAYPAL_CLIENT_SECRET**.
 
 For Mac OS/Linux:
 
@@ -32,7 +34,6 @@ $env:PAYPAL_CLIENT_ID = "YOUR CLIENT ID FROM PAYPAL"
 $env:PAYPAL_CLIENT_SECRET = "YOUR CLIENT SECRET FROM PAYPAL"
 ```
 
-4. Download and install a Bot Framework emulator, as this bot can be run locally: https://docs.botframework.com/en-us/tools/bot-framework-emulator/
 
 ## Installation
 
@@ -46,7 +47,7 @@ Assuming that you've installed a version of Node 6:
 6. Done! :tada:
 
 ## License
-MIT. See LICENSE file.
+**MIT**. See LICENSE file.
 
 ## Questions? 
 [Tweet at me!](https://twitter.com/bhargav)
