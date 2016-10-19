@@ -1,3 +1,5 @@
+'use strict';
+
 // Node Requires
 const url = require('url');
 
