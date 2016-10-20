@@ -153,7 +153,7 @@ function createAndSendPayment (session) {
             // to approve the transaction before we can actively execute the transaction.
             for (var index = 0; index < payment.links.length; index++) {
                 if (payment.links[index].rel === 'approval_url') {
-                    builder.Prompts.text(session, "Please pay your fine: " + payment.links[index].href);
+                    session.send("Please pay your fine: " + payment.links[index].href);
                 }
             }
         }
@@ -206,10 +206,10 @@ function respondToUser (payment, botServiceUrl, channelId, addressId, conversati
         useAuth: false
     };
 
-    let message = new builder.Message().address(address).text('executionComplete');
+    let message = new builder.Message().address(address).text('Thanks for your payment!');
 
-    // bot.receive allows us to simulate the entry of text to the bot by a user.
-    bot.receive(message.toMessage());
+    // Asks the bot to send the message we built up above to the user.
+    bot.send(message.toMessage());
 }
 
 //=========================================================
@@ -223,7 +223,7 @@ bot.dialog('/', function (session, args) {
         session.beginDialog('listFines');
 });
 
-// Simple three step dialog to list 'fines' that a user has received, and allow
+// Simple two step dialog to list 'fines' that a user has received, and allow
 // a user to 'pay' them. 
 bot.dialog('listFines', [
     function (session, args) {
@@ -242,13 +242,5 @@ bot.dialog('listFines', [
 
         // Starts the payment flow.
         createAndSendPayment(session);
-    },
-    function (session, results) {
-        // The payment execution callback will call replyToUser, which builds 
-        // the message that triggers this step of the waterfall.
-        if (results.response === 'executionComplete') {
-            console.log('Resuming from payment execution');
-            session.send('Thanks for your payment!')
-        }
     },
 ]);
