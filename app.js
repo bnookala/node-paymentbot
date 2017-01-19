@@ -11,8 +11,7 @@ const paypal = require('paypal-rest-sdk');
 // Local modules
 const configuration = require('./configuration');
 
-
-// Configure the paypal module with a client id and client secret that you cancel_url
+// Configure the paypal module with a client id and client secret that you
 // generate from https://developer.paypal.com/
 paypal.configure({
     'mode': configuration.PAYPAL_CLIENT_MODE,
@@ -38,22 +37,29 @@ server.listen(configuration.PORT, function () {
    console.log('%s listening to %s', server.name, server.url); 
 });
 
-// This is a callback that Paypal ends up hitting when a user approves a transaction for completion.
+// This is a callback that Paypal hits when a user approves a transaction for completion.
 server.get('approvalComplete', function (req, res, next) {
     console.log('User approved transaction');
     executePayment(req.params);
-    res.send(200);
+    res.end('<html><body>Executing your transaction - you may close this browser tab.</body></html>');
 });
 
-// Messages are posted to this endpoint. We ask the connector to listen at this endpoint for new messages.
-server.post('/api/messages', connector.listen());
+// This is a callback that Paypal hits when a user cancels a transaction for completion.
+server.get('cancelPayment', function (req, res, next) {
+    console.log('User cancelled transaction');
+    cancelledPayment(req.params);
+    res.end('<html><body>Canceling your transaction - you may close this browser tab.</body></html>');
+});
 
+// Messages are posted to this endpoint. We ask the connector to listen at this endpoint
+// for new messages.
+server.post('/api/messages', connector.listen());
 
 /**
  * This function creates and returns an object that is passed through to the PayPal Node SDK 
  * to create a payment that a user must manually approve.
  * 
- * See https://developer.paypal.com/docs/api/payments/#payment_create_request for a description of the fields.
+ * See https://developer.paypal.com/docs/api/payments/#payment_create_request for a description of * the fields.
  */
 function createPaymentJson (returnUrl, cancelUrl) {
     return {
@@ -88,7 +94,7 @@ function createPaymentJson (returnUrl, cancelUrl) {
  * This function creates and returns an object that is passed through to the PayPal Node SDK
  * to execute an authorized payment.
  * 
- * See https://developer.paypal.com/docs/api/payments/#payment_execute_request for a description of the fields.
+ * See https://developer.paypal.com/docs/api/payments/#payment_execute_request for a description of * the fields.
  */
 function executePaymentJson (payerId) {
     return {
@@ -103,31 +109,26 @@ function executePaymentJson (payerId) {
 }
 
 /**
- * Generates a URL that Paypal will redirect to on successful approval of the payment by the user.
+ * Generates a URL that Paypal will redirect to on approval or cancellation 
+ * of the payment by the user.
  */
-function createReturnUrl (address) {
-    console.log('Creating Return Url');
+function createUrl (path, address) {
+    console.log('Creating URL for path: ' + path);
 
-    // We build up this object to tell the approval callback
-    // where (which user, channel, bot user) the receipt
-    // message should be sent to, after the transaction is executed.
-    let queryObject = {
-        'addressId': address.id,
-        'conversationId': address.conversation.id,
-        'userId': address.user.id,
-        'channelId': address.channelId,
-        'botServiceUrl': encodeURIComponent(address.serviceUrl)
-    };
-
+    // The address passed in is an Object that defines the context
+    // of the conversation - the user, the channel, the http endpoint the bot
+    // exists on, and so on. We encode this information into the return URL
+    // to be parsed out by our approval completion endpoint.
+    let addressEncoded = encodeURIComponent(JSON.stringify(address));
 
     // This object encodes the endpoint that PayPal redirects to when
     // a user approves the transaction.
     let urlObject = {
         protocol: 'http',
-        hostname: 'localhost',
+        hostname: configuration.HOST,
         port: configuration.PORT,
-        pathname: 'approvalComplete',
-        query: queryObject
+        pathname: path,
+        query: { addressEncoded }
     }
 
     return url.format(urlObject);
@@ -139,11 +140,13 @@ function createReturnUrl (address) {
 function createAndSendPayment (session) {
     console.log('Creating Payment');
 
-    let returnUrl = createReturnUrl(session.message.address);
-    let paymentJson = createPaymentJson(returnUrl, 'http://localhost');
+    let returnUrl = createUrl('approvalComplete', session.message.address);
+    let cancelUrl = createUrl('cancelPayment', session.message.address);
+    let paymentJson = createPaymentJson(returnUrl, cancelUrl);
 
     paypal.payment.create(paymentJson, function (error, payment) {
         if (error) {
+            console.log(error);
             throw error;
         } else {
             // The SDK returns a payment object when the payment is successfully created. 
@@ -161,24 +164,21 @@ function createAndSendPayment (session) {
 };
 
 /**
- * When a payment is approved by the user, we can go ahead an execute it.
+ * When a payment is approved by the user, we can go ahead and execute it.
  */
 function executePayment (parameters) {
     console.log('Executing an Approved Payment');
 
     // Appended to the URL by PayPal during the approval step.
-    let paymentId = parameters.paymentId;   
+    let paymentId = parameters.paymentId;
     let payerId = parameters.PayerID;
 
     // Generate the sample payment execution JSON that paypal requires:
-    let paymentJson = executePaymentJson(payerId)
+    let paymentJson = executePaymentJson(payerId);
 
-    // Appended to the URL by us in createReturnUrl
-    let addressId = parameters.addressId;
-    let conversationId = parameters.conversationId;
-    let channelId = parameters.channelId;
-    let userId = parameters.userId;
-    let botServiceUrl = decodeURIComponent(parameters.botServiceUrl);
+    // Grab the encoded address object, URL decode it, and parse it back into a JSON object.
+    let addressEncoded = decodeURIComponent(parameters.addressEncoded);
+    let address = JSON.parse(addressEncoded);
 
     // Finally, execute the payment, and tell the user that we got their payment.
     paypal.payment.execute(paymentId, paymentJson, function (error, payment) {
@@ -187,7 +187,7 @@ function executePayment (parameters) {
             throw error;
         } else {
             console.log('Payment Executed Successfully');
-            respondToUser(payment, botServiceUrl, channelId, addressId, conversationId, userId);
+            respondToUserSuccess(payment, address);
         }
     });
 }
@@ -196,19 +196,23 @@ function executePayment (parameters) {
  * This function completes the payment dialog by creating a message, binding an address to it, 
  * and sending it.
  */
-function respondToUser (payment, botServiceUrl, channelId, addressId, conversationId, userId) {
-    let address = {
-        channelId: channelId,
-        user: { id: userId, name: userId },
-        conversation: { id: conversationId },
-        bot: { id: 'paybot', name: 'paybot' },
-        serviceUrl: botServiceUrl,
-        useAuth: false
-    };
-
+function respondToUserSuccess (payment, address) {
     let message = new builder.Message().address(address).text('Thanks for your payment!');
 
-    // Asks the bot to send the message we built up above to the user.
+    bot.send(message.toMessage());
+}
+
+/**
+ * If a user chooses to cancel the payment (on the PayPal approval dialog), we should
+ * back via the bot.
+ */
+function cancelledPayment (parameters) {
+    console.log('Cancelled a payment');
+
+    let addressEncoded = decodeURIComponent(parameters.addressEncoded);
+    let address = JSON.parse(addressEncoded);
+    let message = new builder.Message().address(address).text('Cancelled your payment.');
+
     bot.send(message.toMessage());
 }
 
