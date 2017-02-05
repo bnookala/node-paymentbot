@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/bnookala/node-paymentbot#readme",
   "dependencies": {
-    "botbuilder": "^3.2.3",
+    "botbuilder": "^3.6.0",
     "paypal-rest-sdk": "^1.6.9",
     "restify": "^4.1.1"
   }
