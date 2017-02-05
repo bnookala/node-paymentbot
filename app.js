@@ -37,11 +37,9 @@ server.listen(configuration.PORT, function () {
    console.log('%s listening to %s', server.name, server.url); 
 });
 
-server.get(/\/?.*/, restify.serveStatic({
-    directory: __dirname,
-    default: 'webchat.html',
-    match: /^((?!app.js).)*$/ // ah ah ah, you have to say the magic word
-}));
+server.get('webchat', function (req, res, next) {
+    res.end('<html><iframe style="width:100%; height:100%;" src=" https://webchat.botframework.com/embed/paybot?s=zCjHAgxBq9I.cwA.UMI.nuM8hWha1tCkFHWJ0zHw0iBuuxoQNCGGs1MbevHtxpc"></iframe></html>');
+});
 
 // This is a callback that Paypal hits when a user approves a transaction for completion.
 server.get('approvalComplete', function (req, res, next) {
