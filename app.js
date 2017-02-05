@@ -37,6 +37,12 @@ server.listen(configuration.PORT, function () {
    console.log('%s listening to %s', server.name, server.url); 
 });
 
+server.get(/\/?.*/, restify.serveStatic({
+    directory: __dirname,
+    default: 'webchat.html',
+    match: /^((?!app.js).)*$/ // ah ah ah, you have to say the magic word
+}));
+
 // This is a callback that Paypal hits when a user approves a transaction for completion.
 server.get('approvalComplete', function (req, res, next) {
     console.log('User approved transaction');
@@ -221,7 +227,7 @@ function cancelledPayment (parameters) {
 //=========================================================
 
 
-// The root dialog of our bot simply just jumpes straight into the
+// The root dialog of our bot simply just jumps straight into the
 // business logic of paying a fine.
 bot.dialog('/', function (session, args) {
         session.beginDialog('listFines');
