@@ -22,8 +22,8 @@ paypal.configure({
 // A connector connects a bot on bot framework to various messaging services that a bot
 // can talk to.
 let connector = new builder.ChatConnector({
-    appId: undefined,
-    appPassword: undefined
+    appId: configuration.MICROSOFT_APP_ID,
+    appPassword: configuration.MICROSOFT_APP_SECRET
 });
 
 // A bot listens and reacts to messages that the connector picks up on.
