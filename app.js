@@ -130,7 +130,7 @@ function createUrl (path, address) {
     // This object encodes the endpoint that PayPal redirects to when
     // a user approves the transaction.
     let urlObject = {
-        protocol: 'http',
+        protocol: 'https',
         hostname: configuration.HOST,
         port: configuration.PORT,
         pathname: path,
