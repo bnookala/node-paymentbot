@@ -34,22 +34,23 @@ let server = restify.createServer();
 server.use(restify.queryParser());
 
 server.listen(configuration.PORT, function () {
-   console.log('%s listening to %s', server.name, server.url); 
+   console.log('%s listening to %s', server.name, server.url);
 });
 
-server.get('webchat', function (req, res, next) {
-    res.end('<html><iframe style="width:100%; height:100%;" src=" https://webchat.botframework.com/embed/paybot?s=zCjHAgxBq9I.cwA.UMI.nuM8hWha1tCkFHWJ0zHw0iBuuxoQNCGGs1MbevHtxpc"></iframe></html>');
-});
+server.get(/(^\/$)|(\.(html|js|css|png|jpg)$)/, restify.serveStatic({
+    directory: __dirname,
+    default: 'webchat.html'
+}));
 
 // This is a callback that Paypal hits when a user approves a transaction for completion.
-server.get('approvalComplete', function (req, res, next) {
+server.get('/approvalComplete', function (req, res, next) {
     console.log('User approved transaction');
     executePayment(req.params);
     res.end('<html><body>Executing your transaction - you may close this browser tab.</body></html>');
 });
 
 // This is a callback that Paypal hits when a user cancels a transaction for completion.
-server.get('cancelPayment', function (req, res, next) {
+server.get('/cancelPayment', function (req, res, next) {
     console.log('User cancelled transaction');
     cancelledPayment(req.params);
     res.end('<html><body>Canceling your transaction - you may close this browser tab.</body></html>');
@@ -127,10 +128,15 @@ function createUrl (path, address) {
 
     // This object encodes the endpoint that PayPal redirects to when
     // a user approves the transaction.
+    let port = configuration.PORT;
+    if(!parseInt(configuration.PORT)){
+        port = "";
+    }
+    console.log(port);
     let urlObject = {
-        protocol: 'http',
+        protocol: 'https',
         hostname: configuration.HOST,
-        port: configuration.PORT,
+        port: port,
         pathname: path,
         query: { addressEncoded }
     }
@@ -142,12 +148,10 @@ function createUrl (path, address) {
  * Creates a payment on paypal that a user must approve.
  */
 function createAndSendPayment (session) {
-    console.log('Creating Payment');
-
     let returnUrl = createUrl('approvalComplete', session.message.address);
     let cancelUrl = createUrl('cancelPayment', session.message.address);
     let paymentJson = createPaymentJson(returnUrl, cancelUrl);
-
+    
     paypal.payment.create(paymentJson, function (error, payment) {
         if (error) {
             console.log(error);
